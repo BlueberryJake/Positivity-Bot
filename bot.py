@@ -20,9 +20,13 @@ async def on_ready():
     game = discord.Game("with the API")
     await client.change_presence(status=discord.Status.idle, activity=game)
     '''
+numbers = [ ]
 
 @client.event
 async def on_message(message):
+
+
+
     if message.author == client.user:
         return
 
@@ -55,9 +59,10 @@ async def on_message(message):
     if message.content.startswith('$gamble'):
         await message.channel.send(str(random.randint(1,100)))
 
-    if message.content.startswith("$react"):
+
+    if message.content.startswith("$mood"):
         channel = message.channel
-        await channel.send('Message')
-        await message.add_reaction('👋')
+        react = await channel.send('React to this message with how you are feeling')
+        await react.add_reaction('👋')
 
 client.run(TOKEN)
