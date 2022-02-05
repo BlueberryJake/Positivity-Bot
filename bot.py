@@ -55,4 +55,9 @@ async def on_message(message):
     if message.content.startswith('$gamble'):
         await message.channel.send(str(random.randint(1,100)))
 
+    if message.content.startswith("$react"):
+        channel = message.channel
+        await channel.send('Message')
+        await message.add_reaction('👋')
+
 client.run(TOKEN)
