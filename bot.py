@@ -18,58 +18,52 @@ client = discord.Client(intents=intents)
 n = 0
 lastCall = time.time()
 userList = []
-timeOnDiscord = []
 outputChannel = 0
-        
+
+class userInfo:
+    def __init__(self, u):
+        self.rawUser = u
+        self.totalTimeToday = 0
+        self.timeOn = 0
+        self.timeLimit = -1
 
 @tasks.loop(seconds=5.0)
 async def newLoop():
-    global timeOnDiscord
+    global userList, outputChannel
     for guild in client.guilds:
             for member in guild.members:
                 if member.status == discord.Status.online or member.status == discord.Status.dnd:
                     try: 
-                        timeOnDiscord[1][timeOnDiscord[0].index(member)] += 5
+                        userList[[u.rawUser for u in userList].index(member)].timeOn += 5
                     except:
                         print("Member not found")
                 if member.status == discord.Status.offline or member.status == discord.Status.invisible:
-                    try: 
-                        timeOnDiscord[1][timeOnDiscord[0].index(member)] = 0
+                    try:
+                        userList[[u.rawUser for u in userList].index(member)].totalTimeToday += userList[[u.rawUser for u in userList].index(member)].timeOn
+                        userList[[u.rawUser for u in userList].index(member)].timeOn = 0
                     except:
                         print("Member not found")
-
-@tasks.loop(seconds=5.0)
-async def checkOvertime():
-    global timeOnDiscord, outputChannel
-    print(timeOnDiscord)
-    for guild in client.guilds:
-        for member in guild.members:
-            index = timeOnDiscord[0].index(member)
-            if timeOnDiscord[1][index] == timeOnDiscord[2][index] and timeOnDiscord[2][index] != -1:
-                #timeOnDiscord[2][index] += 20
-                outputString = "Get out <@" + str(member.id) + "> !"
-                await outputChannel.send(outputString)
+    for user in userList:
+        if user.timeOn == user.timeLimit:
+            outputString = "Get out <@" + str(user.rawUser.id) + "> !"
+            await outputChannel.send(outputString)
 
 @client.event
 async def on_ready():
-    global timeOnDiscord, outputChannel
+    global userList, outputChannel
     print('We have logged in as {0.user}'.format(client))
     for guild in client.guilds:
             for member in guild.members:
-                userList.append(member)
+                userList.append(userInfo(member))
     for guild in client.guilds:
         for channel in guild.channels:
             if channel.name == "bot-commands":
                 outputChannel = channel
-    userTime = [0] * len(userList)
-    userSetTime = [-1] * len(userList)
-    timeOnDiscord = [userList,userTime,userSetTime]
     newLoop.start()
-    checkOvertime.start()
 
 @client.event
 async def on_message(message):
-    global n, lastCall
+    global n, lastCall, userList
     if message.author == client.user:
         return
 
@@ -82,18 +76,13 @@ async def on_message(message):
             await message.channel.send(n)
             n = n + 1
             lastCall = time.time()
-    
-    if message.content == "e":
-        embedVar = discord.Embed(title="Title", description="Desc", color=0x00ff00)
-        embedVar.add_field(name="Field1", value="hi", inline=False)
-        embedVar.add_field(name="Field2", value="hi2", inline=False)
-        await message.channel.send(embed=embedVar)
+
 
     if message.content == "+ profile":
-        outputString = "You were on discord for " + str(timeOnDiscord[1][timeOnDiscord[0].index(message.author)]) + " seconds"
+        outputString = "You were on discord for " + str(userList[[u.rawUser for u in userList].index(message.author)].timeOn) + " seconds"
         embedVar = discord.Embed(title=message.author.name, description="Here are following relavent stats", color=0x00ff00)
-        embedVar.add_field(name="Time on discord", value=outputString, inline=False)
-        embedVar.add_field(name="Field2", value="hi2", inline=False)
+        embedVar.add_field(name="Total time on discord today", value=outputString, inline=False)
+        embedVar.add_field(name="Schedule", value="idk", inline=False)
         await message.channel.send(embed=embedVar)
 
     if message.content == "mem":
@@ -103,7 +92,7 @@ async def on_message(message):
     
     if message.content == "+ time":
         #print(message.author.id)
-        outputString = "You were on discord for " + str(timeOnDiscord[1][timeOnDiscord[0].index(message.author)]) + " seconds"
+        outputString = "You were on discord for " + str(userList[[u.rawUser for u in userList].index(message.author)].timeOn) + " seconds"
         await message.channel.send(outputString)
     
     if message.content.startswith("+ setTimer"):
@@ -117,7 +106,7 @@ async def on_message(message):
                 raise ValueError
 
             try: 
-                timeOnDiscord[2][timeOnDiscord[0].index(message.author)] = timeAmount
+                userList[[u.rawUser for u in userList].index(message.author)].timeLimit = timeAmount
 
             except:
                 print("Member not found")
