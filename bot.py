@@ -1,68 +1,188 @@
-# bot.py
+from collections import UserList
 import os
-
+import time
 import discord
+
+from datetime import datetime
+from discord.ext import tasks
 from dotenv import load_dotenv
-import random
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
-client = discord.Client()
+intents = discord.Intents.default()
+intents.members = True
+intents.presences = True
+client = discord.Client(intents=intents)
+
+n = 0
+lastCall = time.time()
+userList = []
+timeOnDiscord = []
+outputChannel = 0
+
+schedule = []
+timers = []
+
+
+@tasks.loop(seconds=1.0)
+async def newLoop():
+    global timeOnDiscord
+    for guild in client.guilds:
+        for member in guild.members:
+            if member.status == discord.Status.online or member.status == discord.Status.dnd:
+                try:
+                    timeOnDiscord[1][timeOnDiscord[0].index(member)] += 5
+                except:
+                    return
+                    print("Member not found")
+            if member.status == discord.Status.offline or member.status == discord.Status.invisible:
+                try:
+                    timeOnDiscord[1][timeOnDiscord[0].index(member)] = 0
+                except:
+                    return
+                    print("Member not found")
+
+
+@tasks.loop(seconds=1.0)
+async def checkOvertime():
+    global timeOnDiscord, outputChannel
+    #print(timeOnDiscord)
+    for guild in client.guilds:
+        for member in guild.members:
+            index = timeOnDiscord[0].index(member)
+            if timeOnDiscord[1][index] == timeOnDiscord[2][index] and timeOnDiscord[2][index] != -1:
+                # timeOnDiscord[2][index] += 20
+                outputString = "Get out <@" + str(member.id) + "> !"
+                await outputChannel.send(outputString)
+
+
+@tasks.loop(seconds=1.0)
+async def checkTimers():
+    global outputChannel
+    global timers
+    newTimers = timers
+    currentTime = datetime.now()
+    for timer in timers:
+        secondsDifference = currentTime.second - timer[0].second
+        minutesDifference = currentTime.minute - timer[0].minute
+        hoursDifference = currentTime.hour - timer[0].hour
+        daysDifference = currentTime.day - timer[0].day
+
+        totalSecondsDifference = secondsDifference +\
+                                 60 * minutesDifference +\
+                                 60 * 60 * hoursDifference +\
+                                 60 * 60 * 24 * daysDifference
+
+        if totalSecondsDifference >= timer[1]:
+            await outputChannel.send(str(timer[2]) + ", your " + str(timer[1]) + " minute timer has rung!")
+            newTimers.remove(timer)
+    timers = newTimers
+
+
+
+
+
 
 @client.event
 async def on_ready():
+    global timeOnDiscord, outputChannel
     print('We have logged in as {0.user}'.format(client))
+    for guild in client.guilds:
+        for member in guild.members:
+            userList.append(member)
+    for guild in client.guilds:
+        for channel in guild.channels:
+            if channel.name == "bot-commands":
+                outputChannel = channel
+    userTime = [0] * len(userList)
+    userSetTime = [-1] * len(userList)
+    timeOnDiscord = [userList, userTime, userSetTime]
+    newLoop.start()
+    checkOvertime.start()
+    checkTimers.start()
 
-    #Set the game
-    '''
-    game = discord.Game("with the API")
-    await client.change_presence(status=discord.Status.idle, activity=game)
-    '''
-numbers = [ ]
 
 @client.event
 async def on_message(message):
+    global n, lastCall
 
-
+    global schedule
+    global timers
 
     if message.author == client.user:
         return
 
-    if message.content.startswith('$hello'):
-        pass
+    if message.content.startswith("$timer"):  # Timer
+        messageWords = message.content.split()
 
+        if len(messageWords) >= 1:
+            try:
+                numMinutes = round(float(messageWords[1]))
+                if numMinutes <= 0:
+                    await message.channel.send("Error: Number greater than 0\nSyntax: $timer <Number of Minutes (integer > 0)>")
+                else:
+                    timers.append([datetime.now(), numMinutes * 60, "<@" + str(message.author.id) + ">"])
+                    await message.channel.send(str(numMinutes) + " minute timer has begun!")
+            except ValueError:
+                await message.channel.send("Error: Not a number\nSyntax: $timer <Number of Minutes (integer > 0)>")
 
-        # Ping the role with the ID Number ROLE ID NUMBER (copy ID)
-        # await message.channel.send('Hello! <&@ROLE ID NUMBER>')
+    if message.content.startswith('c'):  # c
 
+        if time.time() - lastCall < 3:
+            await message.channel.send("Wait 3 sec")
 
-        #Ping the user with the username ID USERNAME ID NUMBER
-        #await message.channel.send('Hello! <@USERNAME ID NUMBER>')
+        else:
+            await message.channel.send(n)
+            n = n + 1
+            lastCall = time.time()
 
-    #Ping the user who sent the message with USERNAME ID NUMBER
-    #mention = f'<@!USERNAME ID NUMBER>'
-    #if mention in message.content:
-    #    await message.channel.send(mention)
+    if message.content == "e":  # e
+        embedVar = discord.Embed(title="Title", description="Desc", color=0x00ff00)
+        embedVar.add_field(name="Field1", value="hi", inline=False)
+        embedVar.add_field(name="Field2", value="hi2", inline=False)
+        await message.channel.send(embed=embedVar)
 
-    if message.content.startswith('$greet'):
-        channel = message.channel
-        await channel.send('Say hello!')
+    if message.content == "+ profile":  # profile
+        outputString = "You were on discord for " + str(
+            timeOnDiscord[1][timeOnDiscord[0].index(message.author)]) + " seconds"
+        embedVar = discord.Embed(title=message.author.name, description="Here are following relavent stats",
+                                 color=0x00ff00)
+        embedVar.add_field(name="Time on discord", value=outputString, inline=False)
+        embedVar.add_field(name="Field2", value="hi2", inline=False)
+        await message.channel.send(embed=embedVar)
 
-        def check(m):
-            return m.content == 'hello' and m.channel == channel
+    if message.content == "mem":  # member ids
+        for guild in client.guilds:
+            for member in guild.members:
+                await message.channel.send(member.id)
 
-        msg = await client.wait_for('message', check=check)
-        await channel.send('Hello {.author}!'.format(msg))
+    if message.content == "+ time":  # Time on Discord
+        # print(message.author.id)
+        outputString = "You were on discord for " + str(
+            timeOnDiscord[1][timeOnDiscord[0].index(message.author)]) + " seconds"
+        await message.channel.send(outputString)
 
-    if message.content.startswith('$gamble'):
-        await message.channel.send(str(random.randint(1,100)))
+    if message.content.startswith("+ setTimer"):
+        content = message.content.split()
+        #print(content)
+        try:
+            timeAmount = int(content[2])
+            #print(timeAmount)
 
+            if timeAmount <= 0:
+                raise ValueError
 
-    if message.content.startswith("$mood"):
-        channel = message.channel
-        react = await channel.send('React to this message with how you are feeling')
-        await react.add_reaction('👋')
+            try:
+                timeOnDiscord[2][timeOnDiscord[0].index(message.author)] = timeAmount
+
+            except:
+                return
+                print("Member not found")
+
+        except:
+            await message.channel.send("Invalid time")
+
 
 client.run(TOKEN)
