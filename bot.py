@@ -16,11 +16,7 @@ GUILD = os.getenv('DISCORD_GUILD')
 client = discord.Client()
 
 
-@client.event
-async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
-
-numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣']
+# ================== CONSTANTS ====================
 
 hotlines = ['Canada Drug Rehab Addiction Services Directory', '1-866-462-6362',
             'Centre for Suicide Prevention', '1-833-456-4566',
@@ -29,7 +25,6 @@ hotlines = ['Canada Drug Rehab Addiction Services Directory', '1-866-462-6362',
             'Kids Help Phone', '1-800-668-6868',
             'National Eating Disorder Information Centre', '1-866-633-4220',
             'Native Youth Crisis Hotline', '1-877-209-1266']
-
 
 RANDOM_DOG_URL = 'https://dog.ceo/api/breeds/image/random'
 BREED_DOG_URL_1 = 'https://dog.ceo/api/breed/'
@@ -42,15 +37,15 @@ BREED_CAT_URL_2 = 'https://api.thecatapi.com/v1/images/search?breed_ids='
 QUOTES_URL = 'https://zenquotes.io/api/quotes/[key]?option1=value&option2=value'
 
 
+@client.event
+async def on_ready():
+    print('We have logged in as {0.user}'.format(client))
 
 
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
-
-    if message.content.startswith('$gamble'):
-        await message.channel.send(str(random.randint(1, 100)))
 
     if message.content == "+hotlines":
         embedVar = discord.Embed(title="Canadian Hotlines", description="", color=0x000080)
@@ -84,7 +79,8 @@ async def on_message(message):
         embedVar = discord.Embed(title=quote.get('q'), description=quote.get('a'), color=0x000080)
         await message.channel.send(embed=embedVar)
 
-#Return the URL to obtain the image of the dog
+
+# Return the URL to obtain the image of the dog
 def getDogURL(message):
     if message.content == "+dog":
         url = RANDOM_DOG_URL
@@ -94,7 +90,8 @@ def getDogURL(message):
 
     return url
 
-#Return the URL to obtain the image of the cat
+
+# Return the URL to obtain the image of the cat
 def getCatURL(message):
     if message.content == "+cat":
         url = RANDOM_CAT_URL
@@ -117,7 +114,8 @@ def getCatURL(message):
             url = BREED_CAT_URL_2 + catID
     return url
 
-#Return the text on a website given a URL
+
+# Return the text on a website given a URL
 def getTextData(URL):
     request = requests.get(URL)
     html_content = BeautifulSoup(request.content, 'html.parser')
