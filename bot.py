@@ -130,7 +130,7 @@ async def on_message(message):
     if message.content.startswith("+setLimit"):
         content = message.content.split()
         try:
-            timeAmount = int(content[2])
+            timeAmount = int(content[1])
 
             if timeAmount <= 0:
                 raise ValueError
