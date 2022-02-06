@@ -1,5 +1,4 @@
 # bot.py
-from collections import UserList
 import os
 import time
 import discord
