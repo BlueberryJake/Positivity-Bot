@@ -77,8 +77,29 @@ async def on_message(message):
         react = await channel.send('React to this message with how you are feeling')
         await react.add_reaction('👋')
 
+    # Display commands
+    if message.content.startswith("+help"):
+        help_menu = ['**Here are all the commands this bot has to offer!**',
+                     'Add a + sign (no spaces) in front of a command to use it.',
+                     '',
+                     '*helpline*: Access a list of helplines',
+                     '*timer*: Check your timers and add new ones',
+                     '*schedule*: Check your schedule and add events',
+                     '*mood*: Log your mood into the bot',
+                     '*profile*: See your stats, such as Discord usage and average recent mood',
+                     '*time*: See how long you spent on Discord today',
+                     '*setLimit*: Set how much longer you want to stay on Discord this session',
+                     '*quote*: See a motivational quote',
+                     '*dog*: See a cute dog photo',
+                     '*cat*: See a cute cat photo',
+                     '*joke*: Read a joke',
+                     '*smile*: Read some good news',
+                     '*yum*: See a food picture',
+                     '*memes*: See a meme']
+        await message.channel.send('\n'.join(help_menu))
+
     # Post a joke from Reddit
-    if message.content.startswith("+ joke"):
+    if message.content.startswith("+joke"):
         joke = reddit_post('https://oauth.reddit.com/r/Jokes/top')
 
         embed_var = discord.Embed(title=joke[0], description=joke[1], color=0x00ff00)
@@ -87,7 +108,7 @@ async def on_message(message):
         await message.channel.send(embed=embed_var)
 
     # Post good news from Reddit
-    if message.content.startswith("+ smile"):
+    if message.content.startswith("+smile"):
         good_news = reddit_post('https://oauth.reddit.com/r/MadeMeSmile/top')
 
         embed_var = discord.Embed(title=good_news[0], description=good_news[1], color=0x00ff00,
@@ -98,7 +119,7 @@ async def on_message(message):
         await message.channel.send(embed=embed_var)
 
     # Post a food picture from Reddit
-    if message.content.startswith("+ yum"):
+    if message.content.startswith("+yum"):
         good_news = reddit_post('https://oauth.reddit.com/r/Food/top')
 
         embed_var = discord.Embed(title=good_news[0], description=good_news[1], color=0x00ff00,
@@ -109,7 +130,7 @@ async def on_message(message):
         await message.channel.send(embed=embed_var)
 
     # Post a meme from Reddit
-    if message.content.startswith("+ memes"):
+    if message.content.startswith("+memes"):
         good_news = reddit_post('https://oauth.reddit.com/r/dankmemes/top')
 
         embed_var = discord.Embed(title=good_news[0], description=good_news[1], color=0x00ff00,
