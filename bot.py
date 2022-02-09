@@ -331,8 +331,29 @@ async def on_message(message):
 
                 except ValueError:
                     await message.channel.send("Error: Invalid Syntax\n" +
-                                               "Syntax: + schedule add\n" +
+                                               "Syntax: +schedule add\n" +
                                                "<Year> <Month> <Day> <Hour> <Minute> <Second>")
+
+    if message.content.startswith("+add"):
+        totalSum = 0
+        try:
+            for num in messageWords[1:]:
+                totalSum += float(num)
+            await message.channel.send("The sum is " + str(totalSum))
+        except ValueError:
+            await message.channel.send("Error: Invalid Syntax\n" +
+                                       "Syntax: +add <num1> <num2> ...")
+
+    if message.content.startswith("+multiply"):
+        totalProduct = 1
+        try:
+            for num in messageWords[1:]:
+                totalProduct *= float(num)
+            await message.channel.send("The product is " + str(totalProduct))
+        except ValueError:
+            await message.channel.send("Error: Invalid Syntax\n" +
+                                       "Syntax: +multiply <num1> <num2> ...")
+
 
     if message.content == "+hotlines":
         embedVar = discord.Embed(title="Canadian Hotlines", description="", color=0x000080)
