@@ -79,6 +79,39 @@ class userInfo:
         self.averageReaction = None
 
 
+class Timer:
+    def __init__(self, weeks, days, hours, minutes, seconds):
+        self.weeks = weeks
+        self.days = days
+        self.hours = hours
+        self.minutes = minutes
+        self.seconds = seconds
+    def toTotalSeconds(self):
+        totalSeconds = 0
+        totalSeconds += self.seconds
+        totalSeconds += self.minutes * 60
+        totalSeconds += self.hours * 60 * 60
+        totalSeconds += self.days * 60 * 60 * 24
+        totalSeconds += self.weeks * 60 * 60 * 24 * 7
+        return totalSeconds
+    def setFromTotalSeconds(self, totalSeconds):
+        self.weeks = totalSeconds // (60 * 60 * 24 * 7)
+
+        totalSeconds -= self.weeks * (60 * 60 * 24 * 7)
+        self.days = totalSeconds // (60 * 60 * 24)
+
+        totalSeconds -= self.days * (60 * 60 * 24)
+        self.hours = totalSeconds // (60 * 60)
+
+        totalSeconds -= self.hours * (60 * 60)
+        self.minutes = totalSeconds // 60
+
+        totalSeconds -= self.minutes * 60
+        self.seconds = totalSeconds
+    def getTimeLeft(self):
+        return [self.weeks, self.days, self.hours, self.mintues, self.seconds]
+
+
 @tasks.loop(seconds=5.0)
 async def newLoop():
     global userList, outputChannel
@@ -334,26 +367,14 @@ async def on_message(message):
                                                "Syntax: +schedule add\n" +
                                                "<Year> <Month> <Day> <Hour> <Minute> <Second>")
 
-    if message.content.startswith("+add"):
-        totalSum = 0
-        try:
-            for num in messageWords[1:]:
-                totalSum += float(num)
-            await message.channel.send("The sum is " + str(totalSum))
-        except ValueError:
-            await message.channel.send("Error: Invalid Syntax\n" +
-                                       "Syntax: +add <num1> <num2> ...")
+    if messageWords[0] == "+add" or messageWords[0] == "+sum":
+        await message.channel.send(calculateSum(messageWords[1:]))
 
-    if message.content.startswith("+multiply"):
-        totalProduct = 1
-        try:
-            for num in messageWords[1:]:
-                totalProduct *= float(num)
-            await message.channel.send("The product is " + str(totalProduct))
-        except ValueError:
-            await message.channel.send("Error: Invalid Syntax\n" +
-                                       "Syntax: +multiply <num1> <num2> ...")
+    if messageWords[0] == "+multiply" or messageWords[0] == "+product":
+        await message.channel.send(calculateProduct(messageWords[1:]))
 
+    if messageWords[0] == "+mean" or messageWords[0] == "+average":
+        await message.channel.send(calculateMean(messageWords[1:]))
 
     if message.content == "+hotlines":
         embedVar = discord.Embed(title="Canadian Hotlines", description="", color=0x000080)
@@ -449,6 +470,35 @@ async def on_message(message):
 
         channel = message.channel
         await message.channel.send(embed=embed_var)
+
+
+def calculateSum(nums):
+    totalSum = 0
+    try:
+        for num in nums:
+            totalSum += float(num)
+        return "The sum is " + str(totalSum)
+    except ValueError:
+        return "Error: Invalid Syntax\nSyntax: +add <num1> <num2> ..."
+
+def calculateProduct(nums):
+    totalProduct = 1
+    try:
+        for num in nums:
+            totalProduct *= float(num)
+        return "The product is " + str(totalProduct)
+    except ValueError:
+        return "Error: Invalid Syntax\nSyntax: +multiply <num1> <num2> ..."
+
+
+def calculateMean(nums):
+    totalAverage = 0
+    try:
+        for num in nums:
+            totalAverage += float(num)
+        return "The mean is " + str(totalAverage / len(nums))
+    except ValueError:
+        return "Error: Invalid Syntax\nSyntax: +mean <num1> <num2> ..."
 
 
 def reddit_post(url: str):
