@@ -80,12 +80,22 @@ class userInfo:
 
 
 class Timer:
-    def __init__(self, weeks, days, hours, minutes, seconds):
+    def __init__(self, author, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0, paused = False):
+        self.author = author
+
         self.weeks = weeks
         self.days = days
         self.hours = hours
         self.minutes = minutes
         self.seconds = seconds
+
+        self.setFromTotalSeconds(self.toTotalSeconds())
+
+        self.paused = paused
+    def tick(self):
+        if not self.paused:
+            self.seconds -= 1
+            self.setFromTotalSeconds(self.toTotalSeconds())
     def toTotalSeconds(self):
         totalSeconds = 0
         totalSeconds += self.seconds
@@ -109,10 +119,16 @@ class Timer:
         totalSeconds -= self.minutes * 60
         self.seconds = totalSeconds
     def getTimeLeft(self):
-        return [self.weeks, self.days, self.hours, self.mintues, self.seconds]
+        return [self.weeks, self.days, self.hours, self.minutes, self.seconds]
+    def getAuthor(self):
+        return self.author
+    def pause(self):
+        self.paused = True
+    def unpause(self):
+        self.paused = False
 
 
-@tasks.loop(seconds=5.0)
+@tasks.loop(seconds = 5.0)
 async def newLoop():
     global userList, outputChannel
     for guild in client.guilds:
@@ -135,7 +151,7 @@ async def newLoop():
             await outputChannel.send(outputString)
 
 
-@tasks.loop(count=1)
+@tasks.loop(count = 1)
 async def rxnLoop(message, user):
     global userList, outputChannel
 
@@ -170,31 +186,24 @@ async def rxnLoop(message, user):
         await message.channel.send("No reaction made")
 
 
-@tasks.loop(seconds=1.0)
+@tasks.loop(seconds = 1.0)
 async def checkTimers():
     global outputChannel
     global timers
     newTimers = timers
-    currentTime = datetime.now()
     for timer in timers:
-        secondsDifference = currentTime.second - timer[0].second
-        minutesDifference = currentTime.minute - timer[0].minute
-        hoursDifference = currentTime.hour - timer[0].hour
-        daysDifference = currentTime.day - timer[0].day
-
-        totalSecondsDifference = secondsDifference + \
-                                 60 * minutesDifference + \
-                                 60 * 60 * hoursDifference + \
-                                 60 * 60 * 24 * daysDifference
-
-        if totalSecondsDifference >= timer[1]:
-            await outputChannel.send(str(timer[2]) + ", your " +
-                                     str(timer[1] // 60) + " minute timer has rung!")
+        if timer.getTimeLeft() == [0, 0, 0, 0, 0]:
+            await outputChannel.send(str(timer.getAuthor()) + ", one of your timers has rung!")
             newTimers.remove(timer)
     timers = newTimers
 
+@tasks.loop(seconds = 1.0)
+async def updateTimers():
+    global timers
+    for timer in timers:
+        timer.tick()
 
-@tasks.loop(seconds=1.0)
+@tasks.loop(seconds = 1.0)
 async def checkSchedule():
     global outputChannel
     global schedule
@@ -230,6 +239,7 @@ async def on_ready():
                 outputChannel = channel
     newLoop.start()
     checkTimers.start()
+    updateTimers.start()
     checkSchedule.start()
 
 
@@ -288,35 +298,16 @@ async def on_message(message):
 
     if message.content.startswith("+timer"):  # Timer
         if message.content == "+timer" or message.content == "+timer check":
-            currentTime = datetime.now()
             outputString = "Your Timers:"
             for timer in timers:
-                if timer[2] == "<@" + str(message.author.id) + ">":
-                    secondsDifference = timer[0].second - currentTime.second
-                    minutesDifference = timer[0].minute - currentTime.minute
-                    hoursDifference = timer[0].hour - currentTime.hour
-                    daysDifference = timer[0].day - currentTime.day
-
-                    totalSecondsDifference = secondsDifference + \
-                                             60 * minutesDifference + \
-                                             60 * 60 * hoursDifference + \
-                                             60 * 60 * 24 * daysDifference
-                    totalSecondsDifference += timer[1]
-
-                    daysDifference = totalSecondsDifference // (60 * 60 * 24)
-                    totalSecondsDifference -= daysDifference * (60 * 60 * 24)
-                    hoursDifference = totalSecondsDifference // (60 * 60)
-                    totalSecondsDifference -= hoursDifference * (60 * 60)
-                    minutesDifference = totalSecondsDifference // 60
-                    totalSecondsDifference -= minutesDifference * 60
-                    secondsDifference = totalSecondsDifference
-
+                if timer.getAuthor() == "<@" + str(message.author.id) + ">":
+                    timeLeft = timer.getTimeLeft()
                     outputString = outputString + "\n" + \
-                                   str(daysDifference) + " days, " + \
-                                   str(hoursDifference) + " hours, " + \
-                                   str(minutesDifference) + " minutes, " + \
-                                   str(secondsDifference) + " seconds."
-
+                                   str(timeLeft[0]) + " weeks, " + \
+                                   str(timeLeft[1]) + " days, " + \
+                                   str(timeLeft[2]) + " hours, " + \
+                                   str(timeLeft[3]) + " minutes, " + \
+                                   str(timeLeft[4]) + " seconds."
                 else:
                     continue
             await message.channel.send(outputString + "\nEnd of list")
@@ -328,7 +319,7 @@ async def on_message(message):
                     await message.channel.send(
                         "Error: Number greater than 0\nSyntax: $timer <Number of Minutes (integer > 0)>")
                 else:
-                    timers.append([datetime.now(), numMinutes * 60, "<@" + str(message.author.id) + ">"])
+                    timers.append(Timer("<@" + str(message.author.id) + ">", 0, 0, 0, numMinutes, 0, False))
                     await message.channel.send(str(numMinutes) + " minute timer has begun!")
             except ValueError:
                 await message.channel.send("Error: Not a number\nSyntax: + timer <Number of Minutes (integer > 0)>")
