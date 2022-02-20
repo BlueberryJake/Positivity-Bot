@@ -15,7 +15,6 @@ import time
 import json
 from bs4 import BeautifulSoup
 
-
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
@@ -53,7 +52,6 @@ PASSWORD = info[1]
 CLIENT_ID = info[2]
 SECRET_KEY = info[3]
 
-
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -65,11 +63,12 @@ userList = []
 timeOnDiscord = []
 outputChannel = 0
 
+timerID = 1
 schedule = []
 timers = []
 
 
-class userInfo:
+class UserInfo:
     def __init__(self, u):
         self.rawUser = u
         self.totalTimeToday = 0
@@ -80,7 +79,8 @@ class userInfo:
 
 
 class Timer:
-    def __init__(self, author, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0, paused = False):
+    def __init__(self, author, weeks=0, days=0, hours=0, minutes=0, seconds=0, paused=False):
+        global timerID
         self.author = author
 
         self.weeks = weeks
@@ -88,14 +88,17 @@ class Timer:
         self.hours = hours
         self.minutes = minutes
         self.seconds = seconds
-
         self.setFromTotalSeconds(self.toTotalSeconds())
 
         self.paused = paused
+        self.ID = timerID
+        timerID += 1
+
     def tick(self):
         if not self.paused:
             self.seconds -= 1
             self.setFromTotalSeconds(self.toTotalSeconds())
+
     def toTotalSeconds(self):
         totalSeconds = 0
         totalSeconds += self.seconds
@@ -104,6 +107,7 @@ class Timer:
         totalSeconds += self.days * 60 * 60 * 24
         totalSeconds += self.weeks * 60 * 60 * 24 * 7
         return totalSeconds
+
     def setFromTotalSeconds(self, totalSeconds):
         self.weeks = totalSeconds // (60 * 60 * 24 * 7)
 
@@ -118,17 +122,33 @@ class Timer:
 
         totalSeconds -= self.minutes * 60
         self.seconds = totalSeconds
+
     def getTimeLeft(self):
         return [self.weeks, self.days, self.hours, self.minutes, self.seconds]
+
     def getAuthor(self):
         return self.author
+
+    def getID(self):
+        return self.ID
+
     def pause(self):
         self.paused = True
+
     def unpause(self):
         self.paused = False
 
 
-@tasks.loop(seconds = 5.0)
+class Event:
+    def __init__(self, year, month, day, hour, minute, second):
+        self.year = year
+        self.month = month
+        self.day = day
+        self.hour = hour
+        self.minute = minute
+        self.second = second
+
+@tasks.loop(seconds=5.0)
 async def newLoop():
     global userList, outputChannel
     for guild in client.guilds:
@@ -151,7 +171,7 @@ async def newLoop():
             await outputChannel.send(outputString)
 
 
-@tasks.loop(count = 1)
+@tasks.loop(count=1)
 async def rxnLoop(message, user):
     global userList, outputChannel
 
@@ -159,19 +179,19 @@ async def rxnLoop(message, user):
     didReact = False
     lastCall = time.time()
 
-    while (not didReact) and (time.time()-lastCall < 5):
+    while (not didReact) and (time.time() - lastCall < 5):
         reactionValue = -1
         for reaction in message.reactions:
             async for person in reaction.users():
-                    if person == user:
-                        try:
-                            reactionValue = 1 + numbers.index(reaction.emoji)
-                            didReact = True
-                            break
-                        except:
-                            reactionValue = -1
+                if person == user:
+                    try:
+                        reactionValue = 1 + numbers.index(reaction.emoji)
+                        didReact = True
+                        break
+                    except:
+                        reactionValue = -1
             if didReact:
-                    break
+                break
         if didReact:
             break
 
@@ -179,31 +199,34 @@ async def rxnLoop(message, user):
     if reactionValue != -1:
         await message.channel.send("Reaction made")
         userList[index].prevFiveReactions.append(reactionValue)
-        userList[index].averageReaction = sum(userList[index].prevFiveReactions)/len(userList[index].prevFiveReactions)
-        if(len(userList[index].prevFiveReactions) == 6):
+        userList[index].averageReaction = sum(userList[index].prevFiveReactions) / len(
+            userList[index].prevFiveReactions)
+        if len(userList[index].prevFiveReactions) == 6:
             userList[index].prevFiveReactions.remove(0)
     else:
         await message.channel.send("No reaction made")
 
 
-@tasks.loop(seconds = 1.0)
+@tasks.loop(seconds=1.0)
 async def checkTimers():
     global outputChannel
     global timers
-    newTimers = timers
+    newTimers = timers[:]
     for timer in timers:
         if timer.getTimeLeft() == [0, 0, 0, 0, 0]:
             await outputChannel.send(str(timer.getAuthor()) + ", one of your timers has rung!")
             newTimers.remove(timer)
     timers = newTimers
 
-@tasks.loop(seconds = 1.0)
+
+@tasks.loop(seconds=1.0)
 async def updateTimers():
     global timers
     for timer in timers:
         timer.tick()
 
-@tasks.loop(seconds = 1.0)
+
+@tasks.loop(seconds=1.0)
 async def checkSchedule():
     global outputChannel
     global schedule
@@ -217,8 +240,8 @@ async def checkSchedule():
         currentMinute = currentTime.minute
         currentSecond = currentTime.second
 
-        if currentYear >= event[0] and currentMonth >= event[1] and currentDay >= event[2]\
-           and currentHour >= event[3] and currentMinute >= event[4] and currentSecond >= event[5]:
+        if currentYear >= event[0] and currentMonth >= event[1] and currentDay >= event[2] \
+                and currentHour >= event[3] and currentMinute >= event[4] and currentSecond >= event[5]:
             await outputChannel.send(str(event[6]) + ", one of your events is happening now!")
             newSchedule.remove(event)
     schedule = newSchedule
@@ -231,7 +254,7 @@ async def on_ready():
 
     for guild in client.guilds:
         for member in guild.members:
-            userList.append(userInfo(member))
+            userList.append(UserInfo(member))
 
     for guild in client.guilds:
         for channel in guild.channels:
@@ -266,7 +289,7 @@ async def on_message(message):
     if message.content == "+profile":
         outputString = "You were on discord for " + str(
             userList[[u.rawUser for u in userList].index(message.author)].totalTimeToday) + " seconds"
-        embedVar = discord.Embed(title=message.author.name, description="Here are following relavent stats",
+        embedVar = discord.Embed(title=message.author.name, description="Here are following relevant stats",
                                  color=0x00ff00)
         embedVar.add_field(name="Total time on discord today", value=outputString, inline=False)
         embedVar.add_field(name="Recent average mood",
@@ -297,12 +320,14 @@ async def on_message(message):
             await message.channel.send("Invalid time")
 
     if message.content.startswith("+timer"):  # Timer
+        modifiedTimers = False
         if message.content == "+timer" or message.content == "+timer check":
             outputString = "Your Timers:"
             for timer in timers:
                 if timer.getAuthor() == "<@" + str(message.author.id) + ">":
                     timeLeft = timer.getTimeLeft()
                     outputString = outputString + "\n" + \
+                                   "ID #" + str(timer.getID()) + ": " + \
                                    str(timeLeft[0]) + " weeks, " + \
                                    str(timeLeft[1]) + " days, " + \
                                    str(timeLeft[2]) + " hours, " + \
@@ -312,17 +337,78 @@ async def on_message(message):
                     continue
             await message.channel.send(outputString + "\nEnd of list")
 
+        elif message.content.startswith("+timer remove"):
+            newTimers = timers[:]
+            if messageWords[2] == "all":
+                for timer in timers:
+                    if timer.getAuthor() == "<@" + str(message.author.id) + ">":
+                        newTimers.remove(timer)
+                timers = newTimers[:]
+                await message.channel.send("Successfully removed all timers!")
+            else:
+                try:
+                    chosenID = int(messageWords[2])
+                    newTimers = timers[:]
+                    for timer in timers:
+                        if timer.getAuthor() == "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
+                            newTimers.remove(timer)
+                            await message.channel.send("Successfully removed timer #" + str(timer.getID()) + "!")
+                            modifiedTimers = True
+                            break
+                        elif timer.getAuthor() != "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
+                            await message.channel.send("Error: That is not your timer!")
+                            break
+                    timers = newTimers[:]
+                    if not modifiedTimers:
+                        await message.channel.send("Error: Timer ID not found!")
+                except ValueError:
+                    await message.channel.send("Error: Not a number\nSyntax: +timer remove <timer ID number>")
+
+        elif message.content.startswith("+timer pause"):
+            try:
+                chosenID = int(messageWords[2])
+                for timer in timers:
+                    if timer.getAuthor() == "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
+                        timer.pause()
+                        await message.channel.send("Successfully paused timer #" + str(timer.getID()) + "!")
+                        modifiedTimers = True
+                        break
+                    elif timer.getAuthor() != "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
+                        await message.channel.send("Error: That is not your timer!")
+                        break
+                if not modifiedTimers:
+                    await message.channel.send("Error: Timer ID not found!")
+            except ValueError:
+                await message.channel.send("Error: Not a number\nSyntax: +timer pause <timer ID number>")
+
+        elif message.content.startswith("+timer unpause"):
+            try:
+                chosenID = int(messageWords[2])
+                for timer in timers:
+                    if timer.getAuthor() == "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
+                        timer.unpause()
+                        await message.channel.send("Successfully unpaused timer #" + str(timer.getID()) + "!")
+                        modifiedTimers = True
+                        break
+                    elif timer.getAuthor() != "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
+                        await message.channel.send("Error: That is not your timer!")
+                        break
+                if not modifiedTimers:
+                    await message.channel.send("Error: Timer ID not found!")
+            except ValueError:
+                await message.channel.send("Error: Not a number\nSyntax: +timer unpause <timer ID number>")
+
         elif len(messageWords) >= 1:
             try:
                 numMinutes = round(float(messageWords[1]))
                 if numMinutes <= 0:
                     await message.channel.send(
-                        "Error: Number greater than 0\nSyntax: $timer <Number of Minutes (integer > 0)>")
+                        "Error: Number greater than 0\nSyntax: +timer <Number of Minutes (integer > 0)>")
                 else:
                     timers.append(Timer("<@" + str(message.author.id) + ">", 0, 0, 0, numMinutes, 0, False))
                     await message.channel.send(str(numMinutes) + " minute timer has begun!")
             except ValueError:
-                await message.channel.send("Error: Not a number\nSyntax: + timer <Number of Minutes (integer > 0)>")
+                await message.channel.send("Error: Not a number\nSyntax: +timer <Number of Minutes (integer > 0)>")
 
     if message.content.startswith("+schedule"):
         if message.content == "+schedule" or message.content == "+schedule check":
@@ -471,6 +557,7 @@ def calculateSum(nums):
         return "The sum is " + str(totalSum)
     except ValueError:
         return "Error: Invalid Syntax\nSyntax: +add <num1> <num2> ..."
+
 
 def calculateProduct(nums):
     totalProduct = 1
