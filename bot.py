@@ -64,6 +64,7 @@ timeOnDiscord = []
 outputChannel = 0
 
 timerID = 1
+eventID = 1
 schedule = []
 timers = []
 
@@ -76,6 +77,7 @@ class UserInfo:
         self.timeLimit = -1
         self.prevFiveReactions = []
         self.averageReaction = None
+
 
 
 class Timer:
@@ -138,15 +140,66 @@ class Timer:
     def unpause(self):
         self.paused = False
 
+    def describe(self):
+        description = ""
+        description += "ID #" + str(self.ID) + ": "
+        description += str(self.weeks) + " weeks, "
+        description += str(self.days) + " days, "
+        description += str(self.hours) + " hours, "
+        description += str(self.minutes) + " minutes, "
+        description += str(self.seconds) + " seconds."
+        return description
+
 
 class Event:
-    def __init__(self, year, month, day, hour, minute, second):
+    def __init__(self, author, year, month, day, hour, minute):
+        global eventID
+        self.author = author
         self.year = year
         self.month = month
         self.day = day
         self.hour = hour
         self.minute = minute
-        self.second = second
+
+        self.ID = eventID
+        eventID += 1
+
+    def monthToWord(self):
+        if self.month == 1:
+            return "January"
+        elif self.month == 2:
+            return "February"
+        elif self.month == 3:
+            return "March"
+        elif self.month == 4:
+            return "April"
+        elif self.month == 5:
+            return "May"
+        elif self.month == 6:
+            return "June"
+        elif self.month == 7:
+            return "July"
+        elif self.month == 8:
+            return "August"
+        elif self.month == 9:
+            return "September"
+        elif self.month == 10:
+            return "October"
+        elif self.month == 11:
+            return "November"
+        elif self.month == 12:
+            return "December"
+
+    def describe(self):
+        description = ""
+        description += "ID #" + str(self.ID) + ": "
+        description += self.monthToWord() + " "
+        description += str(self.day) + ", "
+        description += str(self.year) + ", at "
+        description += str(self.hour) + ":"
+        description += str(self.minute) + "."
+        return description
+
 
 @tasks.loop(seconds=5.0)
 async def newLoop():
@@ -214,7 +267,7 @@ async def checkTimers():
     newTimers = timers[:]
     for timer in timers:
         if timer.getTimeLeft() == [0, 0, 0, 0, 0]:
-            await outputChannel.send(str(timer.getAuthor()) + ", one of your timers has rung!")
+            await outputChannel.send(str(timer.getAuthor()) + ", timer #" + str(timer.ID) + " has rung!")
             newTimers.remove(timer)
     timers = newTimers
 
@@ -230,7 +283,7 @@ async def updateTimers():
 async def checkSchedule():
     global outputChannel
     global schedule
-    newSchedule = schedule
+    newSchedule = schedule[:]
     currentTime = datetime.now()
     for event in schedule:
         currentYear = currentTime.year
@@ -238,11 +291,10 @@ async def checkSchedule():
         currentDay = currentTime.day
         currentHour = currentTime.hour
         currentMinute = currentTime.minute
-        currentSecond = currentTime.second
 
-        if currentYear >= event[0] and currentMonth >= event[1] and currentDay >= event[2] \
-                and currentHour >= event[3] and currentMinute >= event[4] and currentSecond >= event[5]:
-            await outputChannel.send(str(event[6]) + ", one of your events is happening now!")
+        if currentYear >= event.year and currentMonth >= event.month and currentDay >= event.day \
+                and currentHour >= event.hour and currentMinute >= event.minute:
+            await outputChannel.send(event.author + ", event #" + str(event.ID) + " is happening now!")
             newSchedule.remove(event)
     schedule = newSchedule
 
@@ -325,14 +377,7 @@ async def on_message(message):
             outputString = "Your Timers:"
             for timer in timers:
                 if timer.getAuthor() == "<@" + str(message.author.id) + ">":
-                    timeLeft = timer.getTimeLeft()
-                    outputString = outputString + "\n" + \
-                                   "ID #" + str(timer.getID()) + ": " + \
-                                   str(timeLeft[0]) + " weeks, " + \
-                                   str(timeLeft[1]) + " days, " + \
-                                   str(timeLeft[2]) + " hours, " + \
-                                   str(timeLeft[3]) + " minutes, " + \
-                                   str(timeLeft[4]) + " seconds."
+                    outputString += "\n" + timer.describe()
                 else:
                     continue
             await message.channel.send(outputString + "\nEnd of list")
@@ -414,35 +459,28 @@ async def on_message(message):
         if message.content == "+schedule" or message.content == "+schedule check":
             outputString = "Your Events:"
             for event in schedule:
-                if event[6] == "<@" + str(message.author.id) + ">":
-                    outputString = outputString + \
-                                   "\nYear: " + str(event[0]) + \
-                                   ", Month: " + str(event[1]) + \
-                                   ", Day: " + str(event[2]) + \
-                                   ", Hour: " + str(event[3]) + \
-                                   ", Minute: " + str(event[4]) + \
-                                   ", Second: " + str(event[5])
+                if event.author == "<@" + str(message.author.id) + ">":
+                    outputString += "\n" + event.describe()
                 else:
                     continue
             await message.channel.send(outputString + "\nEnd of list")
         elif messageWords[1] == "add":
-            if len(messageWords) == 8:
+            if len(messageWords) == 7:
                 try:
                     year = round(float(messageWords[2]))
                     month = round(float(messageWords[3]))
                     day = round(float(messageWords[4]))
                     hour = round(float(messageWords[5]))
                     minute = round(float(messageWords[6]))
-                    second = round(float(messageWords[7]))
 
-                    if year >= datetime.now().year and month > 0 and day > 0 and hour >= 0 and minute >= 0 and second >= 0:
-                        schedule.append([year, month, day, hour, minute, second, "<@" + str(message.author.id) + ">"])
+                    if year >= datetime.now().year and month > 0 and day > 0 and hour >= 0 and minute >= 0:
+                        schedule.append(Event("<@" + str(message.author.id) + ">", year, month, day, hour, minute))
                         await message.channel.send("Event added to your schedule!")
 
                 except ValueError:
                     await message.channel.send("Error: Invalid Syntax\n" +
                                                "Syntax: +schedule add\n" +
-                                               "<Year> <Month> <Day> <Hour> <Minute> <Second>")
+                                               "<Year> <Month> <Day> <Hour> <Minute>")
 
     if messageWords[0] == "+add" or messageWords[0] == "+sum":
         await message.channel.send(calculateSum(messageWords[1:]))
