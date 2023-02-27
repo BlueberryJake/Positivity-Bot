@@ -15,46 +15,46 @@ import time
 import json
 from bs4 import BeautifulSoup
 
+from Command import HelloWorld
+from Commands import Hotlines, Help, Dog, Cat, Quote
+helloWorld = HelloWorld()
+
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
-client = discord.Client()
 
+
+
+'''
 # Define variables to store Reddit login info
 with open('password.txt') as f:
     lines = f.readlines()
 info = []
 for line in lines:
     info.append(line.removesuffix('\n'))
+'''
 
 # ================== CONSTANTS ====================
-hotlines = ['Canada Drug Rehab Addiction Services Directory', '1-866-462-6362',
-            'Centre for Suicide Prevention', '1-833-456-4566',
-            'Crisis Services Canada', '1-833-456-4566, or text 45645',
-            'First Nations and Inuit Hope for Wellness Help Line', '1‑855‑242-3310',
-            'Kids Help Phone', '1-800-668-6868',
-            'National Eating Disorder Information Centre', '1-866-633-4220',
-            'Native Youth Crisis Hotline', '1-877-209-1266']
 
-RANDOM_DOG_URL = 'https://dog.ceo/api/breeds/image/random'
-BREED_DOG_URL_1 = 'https://dog.ceo/api/breed/'
-BREED_DOG_URL_2 = '/images/random'
 
-RANDOM_CAT_URL = 'https://api.thecatapi.com/v1/images/search'
-BREED_CAT_URL = "https://api.thecatapi.com/v1/breeds"
-BREED_CAT_URL_2 = 'https://api.thecatapi.com/v1/images/search?breed_ids='
 
-QUOTES_URL = 'https://zenquotes.io/api/quotes/[key]?option1=value&option2=value'
 
+
+
+
+
+'''
 USERNAME = info[0]
 PASSWORD = info[1]
 CLIENT_ID = info[2]
 SECRET_KEY = info[3]
+'''
 
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
+intents.message_content = True
 client = discord.Client(intents=intents)
 
 n = 0
@@ -481,7 +481,6 @@ async def on_message(message):
                     await message.channel.send("Error: Invalid Syntax\n" +
                                                "Syntax: +schedule add\n" +
                                                "<Year> <Month> <Day> <Hour> <Minute>")
-
     if messageWords[0] == "+add" or messageWords[0] == "+sum":
         await message.channel.send(calculateSum(messageWords[1:]))
 
@@ -492,57 +491,26 @@ async def on_message(message):
         await message.channel.send(calculateMean(messageWords[1:]))
 
     if message.content == "+hotlines":
-        embedVar = discord.Embed(title="Canadian Hotlines", description="", color=0x000080)
-        for index in range(int(len(hotlines) / 2)):
-            embedVar.add_field(name=hotlines[index * 2], value=hotlines[index * 2 + 1], inline=False)
-
-        await message.channel.send(embed=embedVar)
-
+        hotlines = Hotlines(message)
+        await hotlines.run_command()
+        
     if message.content.startswith("+dog"):
-        currentURL = getDogURL(message)
-        data = getTextData(currentURL)
-        parse = (json.loads(data))
-        URL = parse.get("message")
-        await message.channel.send(URL)
+        dog = Dog(message)
+        await dog.run_command()
 
     if message.content.startswith("+cat"):
-        currentURL = getCatURL(message)
-        if currentURL:
-            data = getTextData(currentURL)
-            data = data[1:-1]
-            parse = (json.loads(data))
-            URL = parse.get("url")
-            await message.channel.send(URL)
-        else:
-            await message.channel.send("Invalid Cat Breed!")
+        cat = Cat(message)
+        await cat.run_command()
 
     if message.content == "+quote":
-        data = getTextData(QUOTES_URL)
-        parse = json.loads(data)
-        quote = random.choice(parse)
-        embedVar = discord.Embed(title=quote.get('q'), description=quote.get('a'), color=0x000080)
-        await message.channel.send(embed=embedVar)
+        quote = Quote(message)
+        await quote.run_command()
 
     # Display commands
     if message.content.startswith("+help"):
-        help_menu = ['**Here are all the commands this bot has to offer!**',
-                     'Add a + sign (no spaces) in front of a command to use it.',
-                     '',
-                     '*hotlines*: Access a list of helplines',
-                     '*timer*: Check your timers and add new ones',
-                     '*schedule*: Check your schedule and add events',
-                     '*mood*: Log your mood into the bot',
-                     '*profile*: See your stats, such as Discord usage and average recent mood',
-                     '*time*: See how long you spent on Discord today',
-                     '*setLimit*: Set how much longer you want to stay on Discord this session',
-                     '*quote*: See a motivational quote',
-                     '*dog*: See a cute dog photo',
-                     '*cat*: See a cute cat photo',
-                     '*joke*: Read a joke',
-                     '*smile*: Read some good news',
-                     '*yum*: See a food picture',
-                     '*memes*: See a meme']
-        await message.channel.send('\n'.join(help_menu))
+        help = Help(message)
+        await help.run_command()
+        
 
     # Post a joke from Reddit
     if message.content.startswith("+joke"):
@@ -585,6 +553,8 @@ async def on_message(message):
 
         channel = message.channel
         await message.channel.send(embed=embed_var)
+
+        
 
 
 def calculateSum(nums):
@@ -650,47 +620,6 @@ def reddit_post(url: str):
 
     return random.choice(posts)  # Pick a random post to display
 
-
-# Return the URL to obtain the image of the dog
-def getDogURL(message):
-    if message.content == "+dog":
-        url = RANDOM_DOG_URL
-    else:
-        breed = '/'.join(reversed(((message.content.lower()).split())[1:]))
-        url = BREED_DOG_URL_1 + breed + BREED_DOG_URL_2
-
-    return url
-
-
-# Return the URL to obtain the image of the cat
-def getCatURL(message):
-    if message.content == "+cat":
-        url = RANDOM_CAT_URL
-    else:
-        data = getTextData(BREED_CAT_URL)
-        parse = (json.loads(data))
-        target = (message.content.split()[1])
-        target = target.capitalize()
-
-        length = len(parse)
-        targetIndex = " "
-
-        for index in range(length):
-            if parse[index].get("name") == target:
-                targetIndex = index
-        if targetIndex == " ":
-            return False
-        else:
-            catID = parse[targetIndex].get("id")
-            url = BREED_CAT_URL_2 + catID
-    return url
-
-
-# Return the text on a website given a URL
-def getTextData(URL):
-    request = requests.get(URL)
-    html_content = BeautifulSoup(request.content, 'html.parser')
-    return html_content.get_text()
 
 
 client.run(TOKEN)
