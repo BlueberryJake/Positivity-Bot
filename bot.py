@@ -30,14 +30,14 @@ GUILD = os.getenv('DISCORD_GUILD')
 
 
 
-'''
+
 # Define variables to store Reddit login info
 with open('password.txt') as f:
     lines = f.readlines()
 info = []
 for line in lines:
     info.append(line.removesuffix('\n'))
-'''
+
 
 # ================== CONSTANTS ====================
 
@@ -48,12 +48,12 @@ for line in lines:
 
 
 
-'''
+
 USERNAME = info[0]
 PASSWORD = info[1]
 CLIENT_ID = info[2]
 SECRET_KEY = info[3]
-'''
+
 
 intents = discord.Intents.default()
 intents.members = True
