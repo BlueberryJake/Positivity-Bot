@@ -7,8 +7,6 @@ import os
 directory = os.getcwd()
 sys.path.append(directory + '/test_import')
 
-import red
-
 
 def getTextData(URL):
     request = requests.get(URL)
