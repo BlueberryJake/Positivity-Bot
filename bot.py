@@ -7,7 +7,6 @@ import random
 
 import requests
 
-
 from datetime import datetime
 from discord.ext import tasks
 import time
@@ -17,7 +16,6 @@ from bs4 import BeautifulSoup
 
 from Command import HelloWorld
 
-
 import sys
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
 import Hotlines, Dog, Cat, Quote, Help, RedditPost
@@ -26,18 +24,6 @@ helloWorld = HelloWorld()
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-
-
-
-
-
-
-
-
-# ================== CONSTANTS ====================
-
-
-
 
 intents = discord.Intents.default()
 intents.members = True
