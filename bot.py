@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import random
 
 import requests
-from requests.auth import HTTPBasicAuth
+
 
 from datetime import datetime
 from discord.ext import tasks
@@ -20,7 +20,7 @@ from Command import HelloWorld
 
 import sys
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
-import Hotlines, Dog, Cat, Quote, Help
+import Hotlines, Dog, Cat, Quote, Help, RedditPost
 helloWorld = HelloWorld()
 
 load_dotenv()
@@ -31,28 +31,12 @@ GUILD = os.getenv('DISCORD_GUILD')
 
 
 
-# Define variables to store Reddit login info
-with open('password.txt') as f:
-    lines = f.readlines()
-info = []
-for line in lines:
-    info.append(line.removesuffix('\n'))
+
 
 
 # ================== CONSTANTS ====================
 
 
-
-
-
-
-
-
-
-USERNAME = info[0]
-PASSWORD = info[1]
-CLIENT_ID = info[2]
-SECRET_KEY = info[3]
 
 
 intents = discord.Intents.default()
@@ -521,42 +505,22 @@ async def on_message(message):
         joke = reddit_post('https://oauth.reddit.com/r/Jokes/top')
 
         embed_var = discord.Embed(title=joke[0], description=joke[1], color=0x00ff00)
-
-        channel = message.channel
         await message.channel.send(embed=embed_var)
 
     # Post good news from Reddit
     if message.content.startswith("+smile"):
-        good_news = reddit_post('https://oauth.reddit.com/r/MadeMeSmile/top')
-
-        embed_var = discord.Embed(title=good_news[0], description=good_news[1], color=0x00ff00,
-                                  url=good_news[2])
-        embed_var.set_image(url=good_news[2])
-
-        channel = message.channel
-        await message.channel.send(embed=embed_var)
-
+        smile = RedditPost.RedditPost(message, "MadeMeSmile")
+        await smile.run_command()
+    
     # Post a food picture from Reddit
     if message.content.startswith("+yum"):
-        good_news = reddit_post('https://oauth.reddit.com/r/Food/top')
-
-        embed_var = discord.Embed(title=good_news[0], description=good_news[1], color=0x00ff00,
-                                  url=good_news[2])
-        embed_var.set_image(url=good_news[2])
-
-        channel = message.channel
-        await message.channel.send(embed=embed_var)
+        food = RedditPost.RedditPost(message, "Food")
+        await food.run_command()
 
     # Post a meme from Reddit
     if message.content.startswith("+memes"):
-        good_news = reddit_post('https://oauth.reddit.com/r/dankmemes/top')
-
-        embed_var = discord.Embed(title=good_news[0], description=good_news[1], color=0x00ff00,
-                                  url=good_news[2])
-        embed_var.set_image(url=good_news[2])
-
-        channel = message.channel
-        await message.channel.send(embed=embed_var)
+        meme = RedditPost.RedditPost(message, "dankmemes")
+        await meme.run_command()
 
         
 
@@ -591,38 +555,7 @@ def calculateMean(nums):
         return "Error: Invalid Syntax\nSyntax: +mean <num1> <num2> ..."
 
 
-def reddit_post(url: str):
-    """Authorize access to Reddit to get required post information. As well,
-    retrieve post information and select a random post."""
-    # Authenticate account and access posts on a subreddit
-    auth = HTTPBasicAuth(CLIENT_ID, SECRET_KEY)
-    data = {'grant_type': 'password',
-            'username': USERNAME,
-            'password': PASSWORD}
-    headers = {'User-Agent': 'positivitybot'}
-    res = requests.post('https://www.reddit.com/api/v1/access_token',
-                        auth=auth, data=data, headers=headers)
-    token = res.json()['access_token']
-    headers = {**headers, **{'Authorization': f"bearer {token}"}}
-    requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
-    res = requests.get(url, headers=headers)
 
-    # Go through the posts and save only necessary information
-    posts = []
-    for post in res.json()['data']['children']:
-        # If the post contains a video, save the thumbnail url
-        if post['data']['is_video']:
-            posts.append((post['data']['title'],
-                          post['data']['selftext'],
-                          post['data']['thumbnail']))
-
-        # Otherwise, save the image url, if it exists
-        else:
-            posts.append((post['data']['title'],
-                          post['data']['selftext'],
-                          post['data']['url']))
-
-    return random.choice(posts)  # Pick a random post to display
 
 
 if __name__ == "__main__":
