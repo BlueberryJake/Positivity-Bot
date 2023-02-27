@@ -16,7 +16,11 @@ import json
 from bs4 import BeautifulSoup
 
 from Command import HelloWorld
-from Commands import Hotlines, Help, Dog, Cat, Quote
+
+
+import sys
+sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
+import Hotlines, Dog, Cat, Quote, Help
 helloWorld = HelloWorld()
 
 load_dotenv()
@@ -491,24 +495,24 @@ async def on_message(message):
         await message.channel.send(calculateMean(messageWords[1:]))
 
     if message.content == "+hotlines":
-        hotlines = Hotlines(message)
+        hotlines = Hotlines.Hotlines(message)
         await hotlines.run_command()
         
     if message.content.startswith("+dog"):
-        dog = Dog(message)
+        dog = Dog.Dog(message)
         await dog.run_command()
 
     if message.content.startswith("+cat"):
-        cat = Cat(message)
+        cat = Cat.Cat(message)
         await cat.run_command()
 
     if message.content == "+quote":
-        quote = Quote(message)
+        quote = Quote.Quote(message)
         await quote.run_command()
 
     # Display commands
     if message.content.startswith("+help"):
-        help = Help(message)
+        help = Help.Help(message)
         await help.run_command()
         
 
@@ -621,5 +625,5 @@ def reddit_post(url: str):
     return random.choice(posts)  # Pick a random post to display
 
 
-
-client.run(TOKEN)
+if __name__ == "__main__":
+    client.run(TOKEN)
