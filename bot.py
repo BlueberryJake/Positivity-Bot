@@ -4,6 +4,7 @@ import os
 import discord
 from dotenv import load_dotenv
 import random
+from discord.ext import commands
 
 import requests
 
@@ -18,7 +19,8 @@ from Command import HelloWorld
 
 import sys
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
-import Hotlines, Dog, Cat, Quote, Help, RedditPost
+import Hotlines, Dog, Cat, Quote, Help, RedditPost, Art
+
 helloWorld = HelloWorld()
 
 load_dotenv()
@@ -29,7 +31,8 @@ intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
 intents.message_content = True
-client = discord.Client(intents=intents)
+# client = discord.Client(intents=intents)
+client = commands.Bot(intents=intents, command_prefix='$')
 
 n = 0
 lastCall = time.time()
@@ -484,6 +487,11 @@ async def on_message(message):
     if message.content.startswith("+help"):
         help = Help.Help(message)
         await help.run_command()
+    
+    if message.content.startswith("+art"):
+        art = Art.Art(message)
+        await art.run_command()
+    
         
 
     # Post a joke from Reddit
