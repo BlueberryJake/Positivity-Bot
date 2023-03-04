@@ -21,6 +21,7 @@ import sys
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
 import Hotlines, Dog, Cat, Quote, Help, RedditPost, Art
 import User
+import utility
 
 helloWorld = HelloWorld()
 
@@ -505,13 +506,13 @@ async def on_message(message):
                                                "Syntax: +schedule add\n" +
                                                "<Year> <Month> <Day> <Hour> <Minute>")
     if messageWords[0] == "+add" or messageWords[0] == "+sum":
-        await message.channel.send(calculateSum(messageWords[1:]))
+        await message.channel.send(utility.calculateSum(messageWords[1:]))
 
     if messageWords[0] == "+multiply" or messageWords[0] == "+product":
-        await message.channel.send(calculateProduct(messageWords[1:]))
+        await message.channel.send(utility.calculateProduct(messageWords[1:]))
 
     if messageWords[0] == "+mean" or messageWords[0] == "+average":
-        await message.channel.send(calculateMean(messageWords[1:]))
+        await message.channel.send(utility.calculateMean(messageWords[1:]))
 
     if message.content == "+hotlines":
         hotlines = Hotlines.Hotlines(message)
@@ -563,36 +564,6 @@ async def on_message(message):
         await meme.run_command()
 
         
-
-
-def calculateSum(nums):
-    totalSum = 0
-    try:
-        for num in nums:
-            totalSum += float(num)
-        return "The sum is " + str(totalSum)
-    except ValueError:
-        return "Error: Invalid Syntax\nSyntax: +add <num1> <num2> ..."
-
-
-def calculateProduct(nums):
-    totalProduct = 1
-    try:
-        for num in nums:
-            totalProduct *= float(num)
-        return "The product is " + str(totalProduct)
-    except ValueError:
-        return "Error: Invalid Syntax\nSyntax: +multiply <num1> <num2> ..."
-
-
-def calculateMean(nums):
-    totalAverage = 0
-    try:
-        for num in nums:
-            totalAverage += float(num)
-        return "The mean is " + str(totalAverage / len(nums))
-    except ValueError:
-        return "Error: Invalid Syntax\nSyntax: +mean <num1> <num2> ..."
 
 
 
