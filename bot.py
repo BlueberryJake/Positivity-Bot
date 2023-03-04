@@ -19,7 +19,7 @@ from Command import HelloWorld
 
 import sys
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
-import Hotlines, Dog, Cat, Quote, Help, RedditPost, Art
+import Hotlines, Dog, Cat, Quote, Help, RedditPost, Art, Profile
 import User
 import utility
 
@@ -359,13 +359,9 @@ async def on_message(message):
     if message.content == "+profile":
         index = userProfileList.get_user_index(message.author)
         userProfile = userProfileList.get_user_profile(index)
-        outputString = "You were on discord for " + str(userProfile.seconds_online) + " seconds"
-        embedVar = discord.Embed(title=message.author.name, description="Here are following relevant stats",
-                                 color=0x00ff00)
-        embedVar.add_field(name="Total time on discord today", value=outputString, inline=False)
-        embedVar.add_field(name="Recent average mood",
-                           value=str(userProfile.average_reaction), inline=False)
-        await message.channel.send(embed=embedVar)
+        profile = Profile.Profile(message, userProfile)
+        await profile.run_command()
+        
 
     if message.content == "+time":
         outputString = "You were on discord for " + str(
