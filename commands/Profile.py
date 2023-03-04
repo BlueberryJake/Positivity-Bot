@@ -19,3 +19,12 @@ class Profile(Command.Command):
         embedVar.add_field(name="Recent average mood",
                            value=str(self.user_profile.average_reaction), inline=False)
         await self.message.channel.send(embed=embedVar)
+
+class Time(Command.Command):
+    def __init__(self, message, user_profile) -> None:
+        self.message = message
+        self.user_profile = user_profile
+    
+    async def run_command(self):
+        outputString = "You were on discord for " + str(self.user_profile.seconds_online) + " seconds"
+        await self.message.channel.send(outputString)

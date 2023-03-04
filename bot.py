@@ -364,9 +364,10 @@ async def on_message(message):
         
 
     if message.content == "+time":
-        outputString = "You were on discord for " + str(
-            userList[[u.rawUser for u in userList].index(message.author)].timeOn) + " seconds"
-        await message.channel.send(outputString)
+        index = userProfileList.get_user_index(message.author)
+        userProfile = userProfileList.get_user_profile(index)
+        time = Profile.Time(message, userProfile)
+        await time.run_command()
 
     if message.content.startswith("+setLimit"):
         content = message.content.split()
