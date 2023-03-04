@@ -20,6 +20,7 @@ from Command import HelloWorld
 import sys
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
 import Hotlines, Dog, Cat, Quote, Help, RedditPost, Art
+import User
 
 helloWorld = HelloWorld()
 
@@ -46,14 +47,39 @@ schedule = []
 timers = []
 
 
-class UserInfo:
-    def __init__(self, u):
-        self.rawUser = u
-        self.totalTimeToday = 0
-        self.timeOn = 0
-        self.timeLimit = -1
-        self.prevFiveReactions = []
-        self.averageReaction = None
+
+
+userProfileList = User.UserProfileList()
+
+class Timer2:
+    def __init__(self, seconds=0, minutes=0):
+        self.seconds = seconds
+        self.paused = False
+    
+    def tick(self):
+        if not self.paused:
+            self.seconds -= 1
+        return self.seconds == 0
+    
+    def pause(self):
+        self.paused = True
+    
+    def unpause(self):
+        self.pause = False
+
+class TimerList:
+    def __init__(self, list) -> None:
+        self.timer_list = list
+    
+    def add_timer(self, timer):
+        self.timer_list.append(timer)
+    
+    def tick_all(self):
+        for timer in self.timer_list:
+            timer.tick()
+    
+
+
 
 
 
@@ -180,40 +206,39 @@ class Event:
 
 @tasks.loop(seconds=5.0)
 async def newLoop():
-    global userList, outputChannel
-    for guild in client.guilds:
-        for member in guild.members:
-            try:
-                index = [u.rawUser for u in userList].index(member)
+    global outputChannel
+    for user_index in range (len(userProfileList.user_profile_list)):
+        userProfile = userProfileList.get_user_profile(user_index)
+        user = userProfile.user_info.rawUser
 
-                if member.status == discord.Status.online or member.status == discord.Status.dnd:
-                    userList[index].timeOn += 5
-                    userList[index].totalTimeToday += 5
-
-                if member.status == discord.Status.offline or member.status == discord.Status.invisible:
-                    userList[index].timeOn = 0
-
-            except:
-                print("Member not found")
-    for user in userList:
-        if user.timeOn == user.timeLimit:
-            outputString = "Get out <@" + str(user.rawUser.id) + "> !"
+        if user.status == discord.Status.online or user.status == discord.Status.dnd:
+            userProfile.add_time(5)
+        
+        if user.status == discord.Status.offline or user.status == discord.Status.invisible:
+            userProfile.reset_time()
+        
+        if userProfile.seconds_online == userProfile.time_limit:
+            outputString = "Get out <@" + str(user.id) + "> !"
             await outputChannel.send(outputString)
-
+        
+        # print(user, userProfile.seconds_online)
 
 @tasks.loop(count=1)
 async def rxnLoop(message, user):
     global userList, outputChannel
+    # print(userList, outputChannel)
 
     numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣']
     didReact = False
     lastCall = time.time()
 
-    while (not didReact) and (time.time() - lastCall < 5):
+    while (not didReact) and (time.time() - lastCall < 10):
         reactionValue = -1
         for reaction in message.reactions:
             async for person in reaction.users():
-                if person == user:
+                print(person, user)
+                print(person.id)
+                if person == user and person.id != 939362278703235103:
                     try:
                         reactionValue = 1 + numbers.index(reaction.emoji)
                         didReact = True
@@ -224,17 +249,25 @@ async def rxnLoop(message, user):
                 break
         if didReact:
             break
-
-    index = [u.rawUser for u in userList].index(user)
+    
+    index = userProfileList.get_user_index(user)
     if reactionValue != -1:
         await message.channel.send("Reaction made")
-        userList[index].prevFiveReactions.append(reactionValue)
-        userList[index].averageReaction = sum(userList[index].prevFiveReactions) / len(
-            userList[index].prevFiveReactions)
-        if len(userList[index].prevFiveReactions) == 6:
-            userList[index].prevFiveReactions.remove(0)
+        userProfile = userProfileList.get_user_profile(index)
+        userProfile.previous_reactions.append(reactionValue)
+        userProfile.average_reaction = sum(userProfile.previous_reactions) / len (userProfile.previous_reactions)
+        if len(userProfile.previous_reactions) == 6:
+            userProfile.previous_reactions.remove(0)
     else:
         await message.channel.send("No reaction made")
+
+@tasks.loop(seconds=1.0)
+async def checkTimers2():
+    for userProfile in userProfileList.user_profile_list:
+        for timer in userProfile.timer_list.timer_list:
+            if timer.tick():
+                await outputChannel.send(str(userProfile.user_info.rawUser.id))
+
 
 
 @tasks.loop(seconds=1.0)
@@ -283,7 +316,11 @@ async def on_ready():
 
     for guild in client.guilds:
         for member in guild.members:
-            userList.append(UserInfo(member))
+            userProfileList.load_user(member)
+    print(userProfileList)
+
+    for user in userProfileList.user_profile_list:
+        user.timer_list = TimerList([])
 
     for guild in client.guilds:
         for channel in guild.channels:
@@ -293,6 +330,7 @@ async def on_ready():
     checkTimers.start()
     updateTimers.start()
     checkSchedule.start()
+    checkTimers2.start()
 
 
 @client.event
@@ -306,6 +344,8 @@ async def on_message(message):
         return
 
     numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣']
+    if message.content == "+test_log":
+        print(userProfileList)
 
     if message.content == "+mood":
         react = await outputChannel.send('React to this message with how you are feeling')
@@ -316,14 +356,14 @@ async def on_message(message):
         rxnLoop.start(react, message.author)
 
     if message.content == "+profile":
-        outputString = "You were on discord for " + str(
-            userList[[u.rawUser for u in userList].index(message.author)].totalTimeToday) + " seconds"
+        index = userProfileList.get_user_index(message.author)
+        userProfile = userProfileList.get_user_profile(index)
+        outputString = "You were on discord for " + str(userProfile.seconds_online) + " seconds"
         embedVar = discord.Embed(title=message.author.name, description="Here are following relevant stats",
                                  color=0x00ff00)
         embedVar.add_field(name="Total time on discord today", value=outputString, inline=False)
         embedVar.add_field(name="Recent average mood",
-                           value=str(userList[[u.rawUser for u in userList].index(message.author)].averageReaction)[
-                                 0:3], inline=False)
+                           value=str(userProfile.average_reaction), inline=False)
         await message.channel.send(embed=embedVar)
 
     if message.content == "+time":
@@ -340,13 +380,19 @@ async def on_message(message):
                 raise ValueError
 
             try:
-                userList[[u.rawUser for u in userList].index(message.author)].timeLimit = timeAmount
+                userProfile = userProfileList.get_user_profile(userProfileList.get_user_index(message.author))
+                userProfile.time_limit = timeAmount 
 
             except:
                 print("Member not found")
 
         except:
             await message.channel.send("Invalid time")
+    if message.content.startswith("+2timer"):
+        index = userProfileList.get_user_index(message.author)
+        userProfile = userProfileList.get_user_profile(index)
+
+        userProfile.timer_list.add_timer(Timer2(10))
 
     if message.content.startswith("+timer"):  # Timer
         modifiedTimers = False
