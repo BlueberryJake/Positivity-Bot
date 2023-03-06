@@ -55,77 +55,6 @@ timers = []
 
 userProfileList = User.UserProfileList()
 
-class Timer:
-    def __init__(self, author, weeks=0, days=0, hours=0, minutes=0, seconds=0, paused=False):
-        global timerID
-        self.author = author
-
-        self.weeks = weeks
-        self.days = days
-        self.hours = hours
-        self.minutes = minutes
-        self.seconds = seconds
-        self.setFromTotalSeconds(self.toTotalSeconds())
-
-        self.paused = paused
-        self.ID = timerID
-        timerID += 1
-
-    def tick(self):
-        if not self.paused:
-            self.seconds -= 1
-            self.setFromTotalSeconds(self.toTotalSeconds())
-
-    def toTotalSeconds(self):
-        totalSeconds = 0
-        totalSeconds += self.seconds
-        totalSeconds += self.minutes * 60
-        totalSeconds += self.hours * 60 * 60
-        totalSeconds += self.days * 60 * 60 * 24
-        totalSeconds += self.weeks * 60 * 60 * 24 * 7
-        return totalSeconds
-
-    def setFromTotalSeconds(self, totalSeconds):
-        self.weeks = totalSeconds // (60 * 60 * 24 * 7)
-
-        totalSeconds -= self.weeks * (60 * 60 * 24 * 7)
-        self.days = totalSeconds // (60 * 60 * 24)
-
-        totalSeconds -= self.days * (60 * 60 * 24)
-        self.hours = totalSeconds // (60 * 60)
-
-        totalSeconds -= self.hours * (60 * 60)
-        self.minutes = totalSeconds // 60
-
-        totalSeconds -= self.minutes * 60
-        self.seconds = totalSeconds
-
-    def getTimeLeft(self):
-        return [self.weeks, self.days, self.hours, self.minutes, self.seconds]
-
-    def getAuthor(self):
-        return self.author
-
-    def getID(self):
-        return self.ID
-
-    def pause(self):
-        self.paused = True
-
-    def unpause(self):
-        self.paused = False
-
-    def describe(self):
-        description = ""
-        description += "ID #" + str(self.ID) + ": "
-        description += str(self.weeks) + " weeks, "
-        description += str(self.days) + " days, "
-        description += str(self.hours) + " hours, "
-        description += str(self.minutes) + " minutes, "
-        description += str(self.seconds) + " seconds."
-        return description
-
-
 class Event:
     def __init__(self, author, year, month, day, hour, minute):
         global eventID
@@ -212,26 +141,6 @@ async def rxnLoop(message, user):
             userProfile.previous_reactions.remove(0)
     else:
         await message.channel.send("No reaction made")
-
-
-@tasks.loop(seconds=1.0)
-async def checkTimers():
-    global outputChannel
-    global timers
-    newTimers = timers[:]
-    for timer in timers:
-        if timer.getTimeLeft() == [0, 0, 0, 0, 0]:
-            await outputChannel.send(str(timer.getAuthor()) + ", timer #" + str(timer.ID) + " has rung!")
-            newTimers.remove(timer)
-    timers = newTimers
-
-
-@tasks.loop(seconds=1.0)
-async def updateTimers():
-    global timers
-    for timer in timers:
-        timer.tick()
-
 
 @tasks.loop(seconds=1.0)
 async def checkSchedule():
@@ -358,89 +267,6 @@ async def on_message(message):
         else:
             userProfile.timer_list.add_new_timer(int(messageWords[1]))
 
-    if message.content.startswith("+timer"):  # Timer
-        modifiedTimers = False
-        if message.content == "+timer" or message.content == "+timer check":
-            outputString = "Your Timers:"
-            for timer in timers:
-                if timer.getAuthor() == "<@" + str(message.author.id) + ">":
-                    outputString += "\n" + timer.describe()
-                else:
-                    continue
-            await message.channel.send(outputString + "\nEnd of list")
-
-        elif message.content.startswith("+timer remove"):
-            newTimers = timers[:]
-            if messageWords[2] == "all":
-                for timer in timers:
-                    if timer.getAuthor() == "<@" + str(message.author.id) + ">":
-                        newTimers.remove(timer)
-                timers = newTimers[:]
-                await message.channel.send("Successfully removed all timers!")
-            else:
-                try:
-                    chosenID = int(messageWords[2])
-                    newTimers = timers[:]
-                    for timer in timers:
-                        if timer.getAuthor() == "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
-                            newTimers.remove(timer)
-                            await message.channel.send("Successfully removed timer #" + str(timer.getID()) + "!")
-                            modifiedTimers = True
-                            break
-                        elif timer.getAuthor() != "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
-                            await message.channel.send("Error: That is not your timer!")
-                            break
-                    timers = newTimers[:]
-                    if not modifiedTimers:
-                        await message.channel.send("Error: Timer ID not found!")
-                except ValueError:
-                    await message.channel.send("Error: Not a number\nSyntax: +timer remove <timer ID number>")
-
-        elif message.content.startswith("+timer pause"):
-            try:
-                chosenID = int(messageWords[2])
-                for timer in timers:
-                    if timer.getAuthor() == "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
-                        timer.pause()
-                        await message.channel.send("Successfully paused timer #" + str(timer.getID()) + "!")
-                        modifiedTimers = True
-                        break
-                    elif timer.getAuthor() != "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
-                        await message.channel.send("Error: That is not your timer!")
-                        break
-                if not modifiedTimers:
-                    await message.channel.send("Error: Timer ID not found!")
-            except ValueError:
-                await message.channel.send("Error: Not a number\nSyntax: +timer pause <timer ID number>")
-
-        elif message.content.startswith("+timer unpause"):
-            try:
-                chosenID = int(messageWords[2])
-                for timer in timers:
-                    if timer.getAuthor() == "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
-                        timer.unpause()
-                        await message.channel.send("Successfully unpaused timer #" + str(timer.getID()) + "!")
-                        modifiedTimers = True
-                        break
-                    elif timer.getAuthor() != "<@" + str(message.author.id) + ">" and timer.getID() == chosenID:
-                        await message.channel.send("Error: That is not your timer!")
-                        break
-                if not modifiedTimers:
-                    await message.channel.send("Error: Timer ID not found!")
-            except ValueError:
-                await message.channel.send("Error: Not a number\nSyntax: +timer unpause <timer ID number>")
-
-        elif len(messageWords) >= 1:
-            try:
-                numMinutes = round(float(messageWords[1]))
-                if numMinutes <= 0:
-                    await message.channel.send(
-                        "Error: Number greater than 0\nSyntax: +timer <Number of Minutes (integer > 0)>")
-                else:
-                    timers.append(Timer("<@" + str(message.author.id) + ">", 0, 0, 0, numMinutes, 0, False))
-                    await message.channel.send(str(numMinutes) + " minute timer has begun!")
-            except ValueError:
-                await message.channel.send("Error: Not a number\nSyntax: +timer <Number of Minutes (integer > 0)>")
 
     if message.content.startswith("+schedule"):
         if message.content == "+schedule" or message.content == "+schedule check":
@@ -525,12 +351,6 @@ async def on_message(message):
     if message.content.startswith("+memes"):
         meme = RedditPost.RedditPost(message, "dankmemes")
         await meme.run_command()
-
-        
-
-
-
-
 
 if __name__ == "__main__":
     client.run(TOKEN)
