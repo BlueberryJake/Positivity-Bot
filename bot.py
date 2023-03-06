@@ -24,6 +24,8 @@ import User
 import utility
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'objects' ))
 import Timer
+sys.path.append(os.path.join( os.path.dirname( __file__ ), 'loops' ))
+import CheckTimers
 
 
 helloWorld = HelloWorld()
@@ -238,17 +240,6 @@ async def rxnLoop(message, user):
     else:
         await message.channel.send("No reaction made")
 
-@tasks.loop(seconds=1.0)
-async def checkTimers2():
-    for userProfile in userProfileList.user_profile_list:
-        userProfile.timer_list.tick_all()
-        for index in range(len(userProfile.timer_list.rings)):
-            if userProfile.timer_list.rings[index]:
-                userProfile.timer_list.rings[index] = False
-                await outputChannel.send("<@" + str(userProfile.user_info.rawUser.id) + ">")
-
-
-
 
 @tasks.loop(seconds=1.0)
 async def checkTimers():
@@ -309,7 +300,9 @@ async def on_ready():
     checkTimers.start()
     updateTimers.start()
     checkSchedule.start()
-    checkTimers2.start()
+    checkTimers2 = CheckTimers.CheckTimers(userProfileList,outputChannel)
+    checkTimers2.run_loop.start()
+    # checkTimers2.start()
 
 
 @client.event
