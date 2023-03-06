@@ -26,6 +26,7 @@ sys.path.append(os.path.join( os.path.dirname( __file__ ), 'objects' ))
 import Timer
 sys.path.append(os.path.join( os.path.dirname( __file__ ), 'loops' ))
 import CheckTimers
+import UpdateUserTime
 
 
 helloWorld = HelloWorld()
@@ -52,15 +53,7 @@ eventID = 1
 schedule = []
 timers = []
 
-
-
-
 userProfileList = User.UserProfileList()
-
-
-
-
-
 
 class Timer:
     def __init__(self, author, weeks=0, days=0, hours=0, minutes=0, seconds=0, paused=False):
@@ -182,26 +175,6 @@ class Event:
         description += str(self.minute) + "."
         return description
 
-
-@tasks.loop(seconds=5.0)
-async def newLoop():
-    global outputChannel
-    for user_index in range (len(userProfileList.user_profile_list)):
-        userProfile = userProfileList.get_user_profile(user_index)
-        user = userProfile.user_info.rawUser
-
-        if user.status == discord.Status.online or user.status == discord.Status.dnd:
-            userProfile.add_time(5)
-        
-        if user.status == discord.Status.offline or user.status == discord.Status.invisible:
-            userProfile.reset_time()
-        
-        if userProfile.seconds_online == userProfile.time_limit:
-            outputString = "Get out <@" + str(user.id) + "> !"
-            await outputChannel.send(outputString)
-        
-        # print(user, userProfile.seconds_online)
-
 @tasks.loop(count=1)
 async def rxnLoop(message, user):
     global userList, outputChannel
@@ -296,7 +269,8 @@ async def on_ready():
         for channel in guild.channels:
             if channel.name == "bot-commands":
                 outputChannel = channel
-    newLoop.start()
+    updateUserTime = UpdateUserTime.UpdateUserTime(userProfileList, outputChannel)
+    updateUserTime.run_loop.start()
     checkTimers.start()
     updateTimers.start()
     checkSchedule.start()
