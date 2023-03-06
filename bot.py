@@ -22,6 +22,9 @@ sys.path.append(os.path.join( os.path.dirname( __file__ ), 'commands' ))
 import Hotlines, Dog, Cat, Quote, Help, RedditPost, Art, Profile
 import User
 import utility
+sys.path.append(os.path.join( os.path.dirname( __file__ ), 'objects' ))
+import Timer
+
 
 helloWorld = HelloWorld()
 
@@ -52,33 +55,6 @@ timers = []
 
 userProfileList = User.UserProfileList()
 
-class Timer2:
-    def __init__(self, seconds=0, minutes=0):
-        self.seconds = seconds
-        self.paused = False
-    
-    def tick(self):
-        if not self.paused:
-            self.seconds -= 1
-        return self.seconds == 0
-    
-    def pause(self):
-        self.paused = True
-    
-    def unpause(self):
-        self.pause = False
-
-class TimerList:
-    def __init__(self, list) -> None:
-        self.timer_list = list
-    
-    def add_timer(self, timer):
-        self.timer_list.append(timer)
-    
-    def tick_all(self):
-        for timer in self.timer_list:
-            timer.tick()
-    
 
 
 
@@ -265,9 +241,12 @@ async def rxnLoop(message, user):
 @tasks.loop(seconds=1.0)
 async def checkTimers2():
     for userProfile in userProfileList.user_profile_list:
-        for timer in userProfile.timer_list.timer_list:
-            if timer.tick():
-                await outputChannel.send(str(userProfile.user_info.rawUser.id))
+        userProfile.timer_list.tick_all()
+        for index in range(len(userProfile.timer_list.rings)):
+            if userProfile.timer_list.rings[index]:
+                userProfile.timer_list.rings[index] = False
+                await outputChannel.send("<@" + str(userProfile.user_info.rawUser.id) + ">")
+
 
 
 
@@ -320,8 +299,7 @@ async def on_ready():
             userProfileList.load_user(member)
     print(userProfileList)
 
-    for user in userProfileList.user_profile_list:
-        user.timer_list = TimerList([])
+
 
     for guild in client.guilds:
         for channel in guild.channels:
@@ -387,10 +365,31 @@ async def on_message(message):
         except:
             await message.channel.send("Invalid time")
     if message.content.startswith("+2timer"):
+        messageWords = message.content.split(" ")
         index = userProfileList.get_user_index(message.author)
         userProfile = userProfileList.get_user_profile(index)
-
-        userProfile.timer_list.add_timer(Timer2(10))
+        if messageWords[1] == "check":
+            await message.channel.send(userProfile.timer_list)
+        elif messageWords[1] == "remove":
+            if messageWords[2] == "all":
+                for i in range(len(userProfile.timer_list.timer_list)):
+                    userProfile.timer_list.reset_timer(i)
+            else:
+                userProfile.timer_list.reset_timer(int(messageWords[2]))
+        elif messageWords[1] == "pause":
+            if messageWords[2] == "all":
+                for i in range(len(userProfile.timer_list.timer_list)):
+                    userProfile.timer_list.pause_timer(i)
+            else:
+                userProfile.timer_list.pause_timer(int(messageWords[2]))
+        elif messageWords[1] == "unpause":
+            if messageWords[2] == "all":
+                for i in range(len(userProfile.timer_list.timer_list)):
+                    userProfile.timer_list.unpause_timer(i)
+            else:
+                userProfile.timer_list.unpause_timer(int(messageWords[2]))
+        else:
+            userProfile.timer_list.add_new_timer(int(messageWords[1]))
 
     if message.content.startswith("+timer"):  # Timer
         modifiedTimers = False

@@ -1,3 +1,8 @@
+import sys
+import os
+sys.path.append(os.path.join( os.path.dirname( __file__ ), 'objects' ))
+import Timer
+
 
 class UserInfo:
     def __init__(self, u) -> None:
@@ -16,6 +21,8 @@ class UserProfile:
 
         self.previous_reactions = []
         self.average_reaction = None
+
+        self.timer_list = Timer.TimerList(4)
     
     def __str__(self) -> str:
         return self.user_info.__str__()
