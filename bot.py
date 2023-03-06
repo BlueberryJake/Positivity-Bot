@@ -180,8 +180,6 @@ async def on_ready():
                 outputChannel = channel
     updateUserTime = UpdateUserTime.UpdateUserTime(userProfileList, outputChannel)
     updateUserTime.run_loop.start()
-    checkTimers.start()
-    updateTimers.start()
     checkSchedule.start()
     checkTimers2 = CheckTimers.CheckTimers(userProfileList,outputChannel)
     checkTimers2.run_loop.start()
